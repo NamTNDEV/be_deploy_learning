@@ -17,8 +17,30 @@ jobs:
                   node-version: 20.17.0
                   cache: 'npm'
             - name: '::: Create .env file :::'
-              run: echo "${{ secrets.ENV_PROD }}" > .env 
+              run: echo "${{ secrets.ENV }}" > .env 
             - name: '::: Install Dependencies :::'
               run: npm install --force
             - name: '::: Run Build :::'
               run: npm run build
+    deploy:
+      runs-on: ubuntu-latest
+      needs: build
+      steps:
+        - name: Executing remote ssh commands using password
+          uses: appleboy/ssh-action@v1.2.1
+          with:
+            host: ${{ secrets.HOST }}
+            username: ${{ secrets.USERNAME }}
+            password: ${{ secrets.PASSWORD }}
+            port: ${{ secrets.PORT }}
+            script: |
+              export NVM_DIR=~/.nvm
+              source ~/.nvm/nvm.sh
+              cd be_deploy_learning 
+              git fetch --all
+              git reset --hard origin/main
+              echo "${{ secrets.ENV }}" > .env 
+              npm i --force
+              npx prisma generate
+              npm run build
+              pm2 restart ${{ secrets.SERVICE_NAME }}
